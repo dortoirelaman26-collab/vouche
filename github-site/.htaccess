@@ -1,0 +1,12 @@
+# Cache rules for Apache hosting (put this file in the root of the site).
+# Without it, browsers may keep an old app.js / vouchers.js for a while.
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive Off
+</IfModule>
