@@ -277,6 +277,26 @@
       .catch(function () { return findRecord(code); }); /* works offline too */
   }
 
+  /* Company details are editable in admin, so load them from D1 before any
+     page renders and merge into the config used by all render functions. */
+  function applyCompany(c) {
+    if (!c) return;
+    if (c.brand) cfg.brand = c.brand;
+    if (c.brandSub) cfg.brandSub = c.brandSub;
+    if (c.operatorName) cfg.operatorName = c.operatorName;
+    if (c.operatorLicence) cfg.operatorLicence = c.operatorLicence;
+    if (c.operatorTaxId) cfg.operatorTaxId = c.operatorTaxId;
+    if (typeof c.operatorContact === "string") cfg.operatorContact = c.operatorContact;
+  }
+
+  function loadCompany() {
+    if (cfg.useApi !== true) return Promise.resolve();
+    return fetch(apiBase() + "/api/company", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (j) { applyCompany(j && j.company); })
+      .catch(function () { /* keep the values from data/vouchers.js */ });
+  }
+
   function verifyUrl(code) {
     var base = clean(cfg.siteUrl).replace(/\/+$/, "") || location.origin;
     var file = /\.html?$/i.test(base) ? base : base + "/verify.html";
@@ -470,8 +490,9 @@
       '<span class="brand-name">' + esc(cfg.brand || "Verification portal") +
       '<span class="brand-sub">' + esc(cfg.brandSub || "") + "</span></span></a>" +
       '<nav class="topbar-links">' + link("index.html", t("navCheck"), "check") +
-      (cfg.showAdminLink === false ? "" : link("admin.html", t("openAdmin"), "admin")) + "</nav>" +
-      "</div></header>";
+      (cfg.showAdminLink === false ? "" : link("admin.html", t("openAdmin"), "admin")) +
+      (active === "admin" || active === "company" ? link("company.html", "Company details", "company") : "") +
+      "</nav></div></header>";
   }
 
   function lookupFormHtml(prefill, inline) {
@@ -644,6 +665,7 @@
       '<button class="btn btn--ghost" type="button" data-c-list>Load records</button>' +
       '<button class="btn btn--ghost" type="button" data-c-save>Publish this voucher</button>' +
       '<button class="btn btn--ghost" type="button" data-c-delete>Delete this voucher</button>' +
+      '<a class="btn btn--ghost" href="company.html">Company details</a>' +
       "</div>" +
       '<p class="hint" data-c-msg style="margin:10px 0 0"></p>' +
       '<div data-c-rows style="margin-top:12px"></div>' +
@@ -941,25 +963,187 @@
     else refresh();
   }
 
+  /* --------------------------------------------------------- page: company */
+
+  function companyPanelHtml() {
+    return '<section class="card admin-sync no-print">' +
+      '<div class="doc-head"><h1 class="doc-title">Company details' +
+      '<span class="doc-title-sub">Edit the details shown on every verification page</span></h1></div>' +
+      '<div class="form-body">' +
+      '<div class="grid-2">' +
+      '<div class="field"><label for="co-brand">Organisation name (header)</label>' +
+      '<input id="co-brand" type="text" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-sub">Header subtitle</label>' +
+      '<input id="co-sub" type="text" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-name">Inviting organisation (on the card)</label>' +
+      '<input id="co-name" type="text" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-licence">Register number (RTO)</label>' +
+      '<input id="co-licence" type="text" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-tax">Tax ID (INN)</label>' +
+      '<input id="co-tax" type="text" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-contact">Contact email</label>' +
+      '<input id="co-contact" type="text" spellcheck="false"></div>' +
+      "</div>" +
+      '<div class="btn-row">' +
+      '<button class="btn" type="button" data-co-save>Save company details</button>' +
+      '<button class="btn btn--ghost" type="button" data-co-load>Reload from database</button>' +
+      "</div>" +
+      '<p class="hint" data-co-msg style="margin:10px 0 0"></p>' +
+      '<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">' +
+      '<div class="grid-2">' +
+      '<div class="field"><label for="co-base">Site URL</label>' +
+      '<input id="co-base" type="url" placeholder="https://vouche-verification.pages.dev" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-pass">Admin password</label>' +
+      '<input id="co-pass" type="password" autocomplete="current-password"></div>' +
+      "</div>" +
+      '<div class="btn-row">' +
+      '<button class="btn btn--ghost" type="button" data-co-login>Log in</button>' +
+      '<a class="btn btn--ghost" href="admin.html">Voucher admin</a>' +
+      "</div></div>" +
+      "</div></section>";
+  }
+
+  function initCompany() {
+    var app = $("#app");
+    app.innerHTML = companyPanelHtml();
+
+    var baseInput = $("#co-base", app);
+    var passInput = $("#co-pass", app);
+    var msg = $("[data-co-msg]", app);
+    var token = sessionStorage.getItem("vc_token") || "";
+    baseInput.value = localStorage.getItem("vc_base") || apiBase();
+
+    var fields = {
+      brand: $("#co-brand", app),
+      brandSub: $("#co-sub", app),
+      operatorName: $("#co-name", app),
+      operatorLicence: $("#co-licence", app),
+      operatorTaxId: $("#co-tax", app),
+      operatorContact: $("#co-contact", app),
+    };
+
+    function say(text, bad) {
+      msg.textContent = text || "";
+      msg.style.color = bad ? "#b3261e" : "var(--muted)";
+    }
+    function base() {
+      return clean(baseInput.value).replace(/\/+$/, "") || apiBase();
+    }
+    function rememberBase() {
+      localStorage.setItem("vc_base", clean(baseInput.value));
+    }
+    function setFields(c) {
+      Object.keys(fields).forEach(function (k) {
+        if (c[k] != null) fields[k].value = String(c[k]);
+      });
+    }
+    function getFields() {
+      var out = {};
+      Object.keys(fields).forEach(function (k) { out[k] = clean(fields[k].value); });
+      return out;
+    }
+    function fillFromCfg() {
+      setFields({
+        brand: cfg.brand,
+        brandSub: cfg.brandSub,
+        operatorName: cfg.operatorName,
+        operatorLicence: cfg.operatorLicence,
+        operatorTaxId: cfg.operatorTaxId,
+        operatorContact: cfg.operatorContact,
+      });
+    }
+    function call(path, opts) {
+      opts = opts || {};
+      var headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = "Bearer " + token;
+      return fetch(base() + path, Object.assign({ headers: headers, cache: "no-store" }, opts))
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok || j.ok === false) throw new Error(j.error || ("HTTP " + r.status));
+            return j;
+          });
+        });
+    }
+    function reload() {
+      say("Loading current details...");
+      return fetch(base() + "/api/company", { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (j) {
+          if (j && j.company) {
+            setFields(j.company);
+            applyCompany(j.company);
+            say("Loaded. Edit the fields and click Save company details.");
+          } else {
+            fillFromCfg();
+            say("No saved details yet - fill the form and click Save company details.");
+          }
+        })
+        .catch(function (e) {
+          fillFromCfg();
+          say("Could not reach the database; showing current site values. " + e.message, true);
+        });
+    }
+
+    $("[data-co-login]", app).addEventListener("click", function () {
+      rememberBase();
+      if (!passInput.value) return say("Enter the admin password first.", true);
+      call("/api/admin?action=login", {
+        method: "POST",
+        body: JSON.stringify({ password: passInput.value }),
+      }).then(function (j) {
+        token = j.token;
+        sessionStorage.setItem("vc_token", token);
+        passInput.value = "";
+        say("Logged in. You can now save details.");
+      }).catch(function (e) { say(e.message, true); });
+    });
+
+    $("[data-co-load]", app).addEventListener("click", function () {
+      rememberBase();
+      reload();
+    });
+
+    $("[data-co-save]", app).addEventListener("click", function () {
+      rememberBase();
+      var company = getFields();
+      if (!company.brand && !company.operatorName) {
+        return say("Enter at least the organisation name.", true);
+      }
+      call("/api/admin?action=company-save", {
+        method: "POST",
+        body: JSON.stringify({ company: company }),
+      }).then(function () {
+        applyCompany(company);
+        say("Saved. All verification pages now show the new details.");
+      }).catch(function (e) { say(e.message, true); });
+    });
+
+    reload();
+  }
+
   /* ------------------------------------------------------------------ boot */
 
   function boot() {
     var page = document.body.getAttribute("data-page");
     document.documentElement.lang = lang;
-    var bar = $("[data-topbar]");
-    var showBar = page === "admin" || cfg.showTopbar === true;
-    if (bar) {
-      if (showBar) bar.outerHTML = topbarHtml(page === "admin" ? "admin" : "check");
-      else bar.remove();
-    }
 
-    if (typeof qrcode !== "function") {
-      console.warn("[portal] qrcode.js missing - QR codes will not render.");
-    }
+    loadCompany().then(function () {
+      var bar = $("[data-topbar]");
+      var showBar = page === "admin" || page === "company" || cfg.showTopbar === true;
+      if (bar) {
+        if (showBar) bar.outerHTML = topbarHtml(page === "admin" || page === "company" ? page : "check");
+        else bar.remove();
+      }
 
-    if (page === "home") initHome();
-    else if (page === "verify") initVerify();
-    else if (page === "admin") initAdmin();
+      if (typeof qrcode !== "function") {
+        console.warn("[portal] qrcode.js missing - QR codes will not render.");
+      }
+
+      if (page === "home") initHome();
+      else if (page === "verify") initVerify();
+      else if (page === "admin") initAdmin();
+      else if (page === "company") initCompany();
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

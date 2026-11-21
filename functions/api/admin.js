@@ -1,8 +1,10 @@
 /* /api/admin — password-protected voucher management.
    GET  ?action=list              -> all records
+   GET  ?action=company-get       -> company details
    POST { action: "login", password }
    POST { action: "save", token, record, oldCode }
    POST { action: "delete", token, code }
+   POST { action: "company-save", token, company }
    The only secret needed is ADMIN_PASSWORD (set as an encrypted variable).
 */
 
@@ -107,6 +109,18 @@ function rowToRecord(row) {
   };
 }
 
+function rowToCompany(row) {
+  if (!row) return {};
+  return {
+    brand: row.brand,
+    brandSub: row.brand_sub,
+    operatorName: row.operator_name,
+    operatorLicence: row.operator_licence,
+    operatorTaxId: row.operator_tax_id,
+    operatorContact: row.operator_contact,
+  };
+}
+
 export async function onRequest(context) {
   const method = context.request.method;
   if (method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -143,6 +157,29 @@ export async function onRequest(context) {
     if (action === "list" && method === "GET") {
       const res = await env.DB.prepare("SELECT * FROM vouchers ORDER BY updated_at DESC").all();
       return json({ ok: true, records: (res.results || []).map(rowToRecord) });
+    }
+
+    if (action === "company-get" && method === "GET") {
+      const row = await env.DB.prepare(
+        "SELECT brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact FROM company WHERE id = 1"
+      ).first();
+      return json({ ok: true, company: rowToCompany(row) });
+    }
+
+    if (action === "company-save" && method === "POST") {
+      const c = body.company || {};
+      await env.DB.prepare(
+        "INSERT INTO company (id, brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact, updated_at) " +
+        "VALUES (1,?,?,?,?,?,?, strftime('%Y-%m-%dT%H:%M:%SZ','now')) " +
+        "ON CONFLICT(id) DO UPDATE SET " +
+        "brand=excluded.brand, brand_sub=excluded.brand_sub, operator_name=excluded.operator_name, " +
+        "operator_licence=excluded.operator_licence, operator_tax_id=excluded.operator_tax_id, " +
+        "operator_contact=excluded.operator_contact, updated_at=excluded.updated_at"
+      ).bind(
+        text(c.brand), text(c.brandSub), text(c.operatorName),
+        text(c.operatorLicence), text(c.operatorTaxId), text(c.operatorContact)
+      ).run();
+      return json({ ok: true });
     }
 
     if (action === "save" && method === "POST") {
