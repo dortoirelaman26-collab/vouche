@@ -1,10 +1,24 @@
-# Go live: Cloudflare Pages + D1 database
+# Cloudflare Pages + D1 database — LIVE
 
-Your repository: **https://github.com/dortoirelaman26-collab/vouche**
-Your public address is whatever Cloudflare shows in the project after step 7
-( `https://<project-name>.pages.dev` ). **`vouche.pages.dev` is already taken by
-another site — do not use it.** The site detects its own address automatically,
-so you do not need to edit `siteUrl`.
+**The site is already deployed:** https://vouche-verification.pages.dev
+**Admin:** https://vouche-verification.pages.dev/admin.html
+**Repository:** https://github.com/dortoirelaman26-collab/vouche
+
+`vouche.pages.dev` belongs to another site, so the project is named
+`vouche-verification`. The site detects its own address automatically;
+`siteUrl` is empty on purpose.
+
+## Update the live site
+
+```powershell
+cd "C:\Users\user\Downloads\Nouveau dossier"
+git add .
+git commit -m "update"
+git push
+npx.cmd wrangler pages deploy . --project-name=vouche-verification
+```
+
+Below is the original setup guide, kept for reference.
 
 Free forever for this size of site: Pages hosting + D1 database + HTTPS.
 No card needed. The domain can be added later (the domain name itself is not free).
