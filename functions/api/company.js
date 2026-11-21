@@ -24,7 +24,7 @@ function rowToCompany(row) {
   if (!row) {
     return {
       brand: "", brandSub: "", operatorName: "",
-      operatorLicence: "", operatorTaxId: "", operatorContact: "",
+      operatorLicence: "", operatorTaxId: "", operatorContact: "", siteUrl: "",
     };
   }
   return {
@@ -34,6 +34,7 @@ function rowToCompany(row) {
     operatorLicence: row.operator_licence,
     operatorTaxId: row.operator_tax_id,
     operatorContact: row.operator_contact,
+    siteUrl: row.site_url || "",
   };
 }
 
@@ -42,7 +43,7 @@ export async function onRequestGet(context) {
 
   try {
     const row = await context.env.DB.prepare(
-      "SELECT brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact FROM company WHERE id = 1"
+      "SELECT brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact, site_url FROM company WHERE id = 1"
     ).first();
 
     return json({

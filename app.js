@@ -287,6 +287,7 @@
     if (c.operatorLicence) cfg.operatorLicence = c.operatorLicence;
     if (c.operatorTaxId) cfg.operatorTaxId = c.operatorTaxId;
     if (typeof c.operatorContact === "string") cfg.operatorContact = c.operatorContact;
+    if (typeof c.siteUrl === "string") cfg.siteUrl = c.siteUrl;
   }
 
   function loadCompany() {
@@ -655,7 +656,7 @@
       '<span class="doc-title-sub">Publish records to Cloudflare D1</span></h1></div>' +
       '<div class="form-body">' +
       '<div class="grid-2">' +
-      '<div class="field"><label for="vc-base">Site URL</label>' +
+      '<div class="field"><label for="vc-base">Admin API address (automatic)</label>' +
       '<input id="vc-base" type="url" placeholder="https://vouche.pages.dev" autocomplete="off" spellcheck="false"></div>' +
       '<div class="field"><label for="vc-pass">Admin password</label>' +
       '<input id="vc-pass" type="password" autocomplete="current-password"></div>' +
@@ -983,6 +984,9 @@
       '<input id="co-tax" type="text" spellcheck="false"></div>' +
       '<div class="field"><label for="co-contact">Contact email</label>' +
       '<input id="co-contact" type="text" spellcheck="false"></div>' +
+      '<div class="field"><label for="co-url">Public domain / site URL</label>' +
+      '<input id="co-url" type="url" placeholder="https://check.yourcompany.com" spellcheck="false">' +
+      '<span class="hint">Used for QR links. Leave empty to use the site address automatically.</span></div>' +
       "</div>" +
       '<div class="btn-row">' +
       '<button class="btn" type="button" data-co-save>Save company details</button>' +
@@ -991,7 +995,7 @@
       '<p class="hint" data-co-msg style="margin:10px 0 0"></p>' +
       '<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">' +
       '<div class="grid-2">' +
-      '<div class="field"><label for="co-base">Site URL</label>' +
+      '<div class="field"><label for="co-base">Admin API address (automatic)</label>' +
       '<input id="co-base" type="url" placeholder="https://vouche-verification.pages.dev" autocomplete="off" spellcheck="false"></div>' +
       '<div class="field"><label for="co-pass">Admin password</label>' +
       '<input id="co-pass" type="password" autocomplete="current-password"></div>' +
@@ -1020,6 +1024,7 @@
       operatorLicence: $("#co-licence", app),
       operatorTaxId: $("#co-tax", app),
       operatorContact: $("#co-contact", app),
+      siteUrl: $("#co-url", app),
     };
 
     function say(text, bad) {
@@ -1050,6 +1055,7 @@
         operatorLicence: cfg.operatorLicence,
         operatorTaxId: cfg.operatorTaxId,
         operatorContact: cfg.operatorContact,
+        siteUrl: cfg.siteUrl,
       });
     }
     function call(path, opts) {

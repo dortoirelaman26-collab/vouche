@@ -14,7 +14,7 @@ database, not in a public file.
 | `index.html` | Enter a voucher number |
 | `verify.html` | Verification page (status, 15 document fields) |
 | `admin.html` | Issuer tool: log in, publish, edit, delete records |
-| `company.html` | Issuer tool: edit company name, RTO, INN, contact |
+| `company.html` | Issuer tool: edit company name, RTO, INN, contact, public domain |
 | `app.js` | Rendering + API calls |
 | `data/vouchers.js` | Default company details + display flags (no voucher data) |
 | `functions/api/check.js` | Public read-only lookup endpoint |
@@ -22,6 +22,7 @@ database, not in a public file.
 | `functions/api/admin.js` | Authenticated save/list/delete + company-save endpoints |
 | `schema.sql` | D1 vouchers table |
 | `company.sql` | D1 company table + default row |
+| `site-url.sql` | Adds the editable public-domain column |
 | `wrangler.toml` | Pages project + D1 binding |
 
 ## Deploy
@@ -33,6 +34,7 @@ Short version:
 ```powershell
 npx wrangler d1 execute vouche-db --remote --file=schema.sql
 npx wrangler d1 execute vouche-db --remote --file=company.sql
+npx wrangler d1 execute vouche-db --remote --file=site-url.sql
 npx wrangler pages secret put ADMIN_PASSWORD --project-name=vouche-verification
 npx wrangler pages deploy . --project-name=vouche-verification
 ```

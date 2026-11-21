@@ -118,6 +118,7 @@ function rowToCompany(row) {
     operatorLicence: row.operator_licence,
     operatorTaxId: row.operator_tax_id,
     operatorContact: row.operator_contact,
+    siteUrl: row.site_url || "",
   };
 }
 
@@ -161,7 +162,7 @@ export async function onRequest(context) {
 
     if (action === "company-get" && method === "GET") {
       const row = await env.DB.prepare(
-        "SELECT brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact FROM company WHERE id = 1"
+        "SELECT brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact, site_url FROM company WHERE id = 1"
       ).first();
       return json({ ok: true, company: rowToCompany(row) });
     }
@@ -169,15 +170,15 @@ export async function onRequest(context) {
     if (action === "company-save" && method === "POST") {
       const c = body.company || {};
       await env.DB.prepare(
-        "INSERT INTO company (id, brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact, updated_at) " +
-        "VALUES (1,?,?,?,?,?,?, strftime('%Y-%m-%dT%H:%M:%SZ','now')) " +
+        "INSERT INTO company (id, brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact, site_url, updated_at) " +
+        "VALUES (1,?,?,?,?,?,?,?, strftime('%Y-%m-%dT%H:%M:%SZ','now')) " +
         "ON CONFLICT(id) DO UPDATE SET " +
         "brand=excluded.brand, brand_sub=excluded.brand_sub, operator_name=excluded.operator_name, " +
         "operator_licence=excluded.operator_licence, operator_tax_id=excluded.operator_tax_id, " +
-        "operator_contact=excluded.operator_contact, updated_at=excluded.updated_at"
+        "operator_contact=excluded.operator_contact, site_url=excluded.site_url, updated_at=excluded.updated_at"
       ).bind(
         text(c.brand), text(c.brandSub), text(c.operatorName),
-        text(c.operatorLicence), text(c.operatorTaxId), text(c.operatorContact)
+        text(c.operatorLicence), text(c.operatorTaxId), text(c.operatorContact), text(c.siteUrl)
       ).run();
       return json({ ok: true });
     }

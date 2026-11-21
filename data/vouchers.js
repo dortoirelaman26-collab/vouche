@@ -17,10 +17,10 @@ window.VC_CONFIG = {
   operatorTaxId: "ИНН __________",
   operatorContact: "verify@example.com",
 
-  /* ---- Public address of this portal (no trailing slash) ----
-     Leave empty: the site uses its own address automatically, so it works
-     with whatever pages.dev name Cloudflare gives you, and with a custom
-     domain later. Set it manually only if records must point elsewhere. */
+  /* ---- Public address used for QR links ----
+     Leave empty: the site uses its own address automatically.
+     You can set this in /company.html -> "Public domain / site URL"
+     without editing this file. */
   siteUrl: "",
 
   /* ---- Read records from the API instead of this file ---- */

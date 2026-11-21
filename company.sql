@@ -7,11 +7,12 @@ CREATE TABLE IF NOT EXISTS company (
   operator_licence TEXT NOT NULL DEFAULT '',
   operator_tax_id  TEXT NOT NULL DEFAULT '',
   operator_contact TEXT NOT NULL DEFAULT '',
+  site_url         TEXT NOT NULL DEFAULT '',
   updated_at       TEXT NOT NULL DEFAULT ''
 );
 
 INSERT OR IGNORE INTO company
-  (id, brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact)
+  (id, brand, brand_sub, operator_name, operator_licence, operator_tax_id, operator_contact, site_url)
 VALUES
   (1, 'ООО «ВАША КОМПАНИЯ»', 'Проверка визовых ваучеров',
-      'ООО «ВАША КОМПАНИЯ»', 'РТО № ______', 'ИНН __________', '');
+      'ООО «ВАША КОМПАНИЯ»', 'РТО № ______', 'ИНН __________', '', '');
