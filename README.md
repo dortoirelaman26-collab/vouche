@@ -3,9 +3,9 @@
 Russian-language verification site. Voucher records live in a **Cloudflare D1**
 database, not in a public file.
 
-- Public check: `https://vouche-verification.pages.dev/verify.html?code=CODE`
-- Admin (password protected): `https://vouche-verification.pages.dev/admin.html`
-- Company details admin: `https://vouche-verification.pages.dev/company.html`
+- Public check: `https://check-globelvoyazh.pages.dev/verify.html?code=CODE`
+- Admin (password protected): `https://check-globelvoyazh.pages.dev/admin.html`
+- Company details admin: `https://check-globelvoyazh.pages.dev/company.html`
 
 ## Files
 
@@ -35,8 +35,8 @@ Short version:
 npx wrangler d1 execute vouche-db --remote --file=schema.sql
 npx wrangler d1 execute vouche-db --remote --file=company.sql
 npx wrangler d1 execute vouche-db --remote --file=site-url.sql
-npx wrangler pages secret put ADMIN_PASSWORD --project-name=vouche-verification
-npx wrangler pages deploy . --project-name=vouche-verification
+npx wrangler pages secret put ADMIN_PASSWORD --project-name=check-globelvoyazh
+npx wrangler pages deploy . --project-name=check-globelvoyazh
 ```
 
 ## Security notes

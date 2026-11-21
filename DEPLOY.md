@@ -1,11 +1,11 @@
 # Cloudflare Pages + D1 database — LIVE
 
-**The site is already deployed:** https://vouche-verification.pages.dev
-**Admin:** https://vouche-verification.pages.dev/admin.html
+**The site is already deployed:** https://check-globelvoyazh.pages.dev
+**Admin:** https://check-globelvoyazh.pages.dev/admin.html
 **Repository:** https://github.com/dortoirelaman26-collab/vouche
 
 `vouche.pages.dev` belongs to another site, so the project is named
-`vouche-verification`. The site detects its own address automatically;
+`check-globelvoyazh`. The site detects its own address automatically;
 `siteUrl` is empty on purpose.
 
 ## Update the live site
@@ -15,7 +15,7 @@ cd "C:\Users\user\Downloads\Nouveau dossier"
 git add .
 git commit -m "update"
 git push
-npx.cmd wrangler pages deploy . --project-name=vouche-verification
+npx.cmd wrangler pages deploy . --project-name=check-globelvoyazh
 ```
 
 Below is the original setup guide, kept for reference.
