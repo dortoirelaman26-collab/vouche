@@ -490,7 +490,7 @@
       '<span class="brand-name">' + esc(cfg.brand || "Verification portal") +
       '<span class="brand-sub">' + esc(cfg.brandSub || "") + "</span></span></a>" +
       '<nav class="topbar-links">' + link("index.html", t("navCheck"), "check") +
-      (cfg.showAdminLink === false ? "" : link("admin.html", t("openAdmin"), "admin")) +
+      ((active === "admin" || active === "company" || cfg.showAdminLink !== false) ? link("admin.html", t("openAdmin"), "admin") : "") +
       (active === "admin" || active === "company" ? link("company.html", "Company details", "company") : "") +
       "</nav></div></header>";
   }
