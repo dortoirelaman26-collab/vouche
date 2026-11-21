@@ -42,6 +42,7 @@ npx wrangler pages deploy . --project-name=vouche-verification
 ## Security notes
 
 - `ADMIN_PASSWORD` is an encrypted secret; never put it in a file or in git.
-- The site is public. Keep `maskPassport: true` in `data/vouchers.js`.
+- The site is public. `maskPassport: false` shows full passport numbers on the
+  verification page; set it to `true` in `data/vouchers.js` to mask them.
 - Check `admin.html` for any leftover `DEMO-` test records and delete them
   before real use.

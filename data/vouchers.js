@@ -34,7 +34,7 @@ window.VC_CONFIG = {
   showQr: false,
   showQrText: false,
   showAuditLine: false,
-  maskPassport: true,
+  maskPassport: false,
   showDemoNotice: false,
 
   /* Admin page is reachable at /admin.html but protected by a password. */

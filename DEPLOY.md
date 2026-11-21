@@ -162,8 +162,9 @@ Changes are live immediately — the check API sends `Cache-Control: no-store`.
 
 - Voucher data lives in D1 — **not** in a public JavaScript file anymore.
 - Free D1 allowance: 500 MB per database, 10 databases. Thousands of vouchers.
-- `maskPassport: true` is still on. The database stores what you type; only the
-  masked form is shown publicly.
+- `maskPassport: false` — the full passport number is shown on the public
+  verification page. Change it to `true` in `data/vouchers.js` if you ever need
+  the masked form instead.
 - Public pages are Russian only; `admin.html` stays in English (private tool).
 - To update the site later: edit files in `cloudflare-site`, `git add .`,
   `git commit -m "update"`, `git push`. Cloudflare rebuilds automatically.
