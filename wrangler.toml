@@ -1,0 +1,14 @@
+# Cloudflare Pages project.
+# The project name becomes <name>.pages.dev — choose a name that is free;
+# "vouche.pages.dev" is already used by another site.
+# The site detects its own address, so no config change is needed later.
+name = "vouche"
+compatibility_date = "2026-11-21"
+pages_build_output_dir = "."
+
+# Create the database with: npx wrangler d1 create vouche-db
+# Paste the database_id that Wrangler prints below.
+[[d1_databases]]
+binding = "DB"
+database_name = "vouche-db"
+database_id = "42bd25ac-ce8e-4bfe-8b55-bd8e8f7971d3"

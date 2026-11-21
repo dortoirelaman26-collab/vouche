@@ -255,8 +255,30 @@
     return null;
   }
 
+  /* ---- D1 API ------------------------------------------------------- */
+
+  function apiBase() {
+    var v = clean(cfg.apiBase).replace(/\/+$/, "");
+    if (v) return v;
+    if (/^https?:/i.test(location.origin)) return location.origin;
+    return "";
+  }
+
+  function fetchRecord(code) {
+    var target = normCode(code);
+    if (!target) return Promise.resolve(null);
+    if (cfg.useApi !== true) return Promise.resolve(findRecord(code));
+    return fetch(apiBase() + "/api/check?code=" + encodeURIComponent(target), { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("API " + r.status);
+        return r.json();
+      })
+      .then(function (j) { return j && j.found && j.record ? j.record : null; })
+      .catch(function () { return findRecord(code); }); /* works offline too */
+  }
+
   function verifyUrl(code) {
-    var base = clean(cfg.siteUrl).replace(/\/+$/, "");
+    var base = clean(cfg.siteUrl).replace(/\/+$/, "") || location.origin;
     var file = /\.html?$/i.test(base) ? base : base + "/verify.html";
     return file + "?code=" + encodeURIComponent(code);
   }
@@ -515,7 +537,6 @@
   function initVerify() {
     var app = $("#app");
     var code = new URLSearchParams(location.search).get("code") || "";
-    var rec = findRecord(code);
 
     if (!clean(code)) {
       app.innerHTML = demoNoticeHtml() +
@@ -527,28 +548,30 @@
       return;
     }
 
-    app.innerHTML = demoNoticeHtml() + renderCard(rec, { code: clean(code) });
+    fetchRecord(code).then(function (rec) {
+      app.innerHTML = demoNoticeHtml() + renderCard(rec, { code: clean(code) });
 
-    if (rec) {
-      document.title = rec.code + " \u00b7 " + t("h1");
-      hydrateCard(app, rec);
-    } else {
-      document.title = t("statusNotFound") + " \u00b7 " + t("h1");
-      wireLookup(app, function (c) {
-        location.href = "verify.html?code=" + encodeURIComponent(c);
-      });
-    }
+      if (rec) {
+        document.title = rec.code + " \u00b7 " + t("h1");
+        hydrateCard(app, rec);
+      } else {
+        document.title = t("statusNotFound") + " \u00b7 " + t("h1");
+        wireLookup(app, function (c) {
+          location.href = "verify.html?code=" + encodeURIComponent(c);
+        });
+      }
 
-    if (cfg.showActions === true) {
-      var actions = document.createElement("div");
-      actions.className = "btn-row no-print";
-      actions.style.marginTop = "18px";
-      actions.innerHTML = '<a class="btn btn--ghost" href="index.html">' + esc(t("backToLookup")) + "</a>" +
-        (rec ? '<button class="btn btn--ghost" type="button" data-print>' + esc(t("printBtn")) + "</button>" : "");
-      app.appendChild(actions);
-      var printBtn = $("[data-print]", actions);
-      if (printBtn) printBtn.addEventListener("click", function () { window.print(); });
-    }
+      if (cfg.showActions === true) {
+        var actions = document.createElement("div");
+        actions.className = "btn-row no-print";
+        actions.style.marginTop = "18px";
+        actions.innerHTML = '<a class="btn btn--ghost" href="index.html">' + esc(t("backToLookup")) + "</a>" +
+          (rec ? '<button class="btn btn--ghost" type="button" data-print>' + esc(t("printBtn")) + "</button>" : "");
+        app.appendChild(actions);
+        var printBtn = $("[data-print]", actions);
+        if (printBtn) printBtn.addEventListener("click", function () { window.print(); });
+      }
+    });
   }
 
   /* ---------------------------------------------------------- page: admin */
@@ -604,6 +627,29 @@
     return '<div class="field">' + label + input + "</div>";
   }
 
+  /* Connection panel shown above the builder on admin.html. */
+  function adminPanelHtml() {
+    return '<section class="card admin-sync no-print">' +
+      '<div class="doc-head"><h1 class="doc-title">Database access' +
+      '<span class="doc-title-sub">Publish records to Cloudflare D1</span></h1></div>' +
+      '<div class="form-body">' +
+      '<div class="grid-2">' +
+      '<div class="field"><label for="vc-base">Site URL</label>' +
+      '<input id="vc-base" type="url" placeholder="https://vouche.pages.dev" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="field"><label for="vc-pass">Admin password</label>' +
+      '<input id="vc-pass" type="password" autocomplete="current-password"></div>' +
+      "</div>" +
+      '<div class="btn-row">' +
+      '<button class="btn" type="button" data-c-login>Log in</button>' +
+      '<button class="btn btn--ghost" type="button" data-c-list>Load records</button>' +
+      '<button class="btn btn--ghost" type="button" data-c-save>Publish this voucher</button>' +
+      '<button class="btn btn--ghost" type="button" data-c-delete>Delete this voucher</button>' +
+      "</div>" +
+      '<p class="hint" data-c-msg style="margin:10px 0 0"></p>' +
+      '<div data-c-rows style="margin-top:12px"></div>' +
+      "</div></section>";
+  }
+
   function initAdmin() {
     var app = $("#app");
     var form = '<form data-builder><div class="grid-2">';
@@ -617,13 +663,12 @@
     });
     form += "</div></form>";
 
-    app.innerHTML = demoNoticeHtml() +
+    app.innerHTML = demoNoticeHtml() + adminPanelHtml() +
       '<section class="card"><div class="doc-head"><h1 class="doc-title">Voucher builder' +
-      '<span class="doc-title-sub">Runs entirely in this browser \u2014 nothing is uploaded</span></h1></div>' +
+      '<span class="doc-title-sub">Live preview \u2014 publish with the button above</span></h1></div>' +
       '<div class="form-body">' +
-      '<p style="margin:0 0 18px;color:var(--muted);font-size:13.5px">Fill the fields, then copy the generated record into ' +
-      "<code>data/vouchers.js</code> and share the QR code or the verify link. This page is the issuer-side tool: " +
-      "do not publish <code>admin.html</code> on a public server.</p>" +
+      '<p style="margin:0 0 18px;color:var(--muted);font-size:13.5px">Fill the fields and use <strong>Publish this voucher</strong> ' +
+      "in the panel above to save it to the database. The QR code below points to the live verification page.</p>" +
       '<div class="split"><div class="no-print">' + form +
       '<div class="btn-row"><button class="btn" type="button" data-json-copy>Copy record JSON</button>' +
       '<button class="btn btn--ghost" type="button" data-json-download>Download JSON</button>' +
@@ -764,32 +809,136 @@
       btn.addEventListener("click", function () { window.print(); });
     });
 
-    /* seed the form with a sensible demo record */
-    var seed = records[0];
-    if (seed) {
+    /* Fill the builder form from a record returned by the API. */
+    var currentCode = "";
+    function fillForm(rec) {
+      if (!rec) return;
       var flat = {
-        code: seed.code,
-        status: seed.status,
-        issuedAt: (seed.issuedAt || "").slice(0, 16),
-        surname: seed.holder && seed.holder.surname,
-        given: seed.holder && seed.holder.given,
-        passport: seed.holder && seed.holder.passport,
-        dob: seed.holder && seed.holder.dob,
-        gender: seed.holder && seed.holder.gender,
-        nationality: seed.holder && seed.holder.nationality,
-        multiplicity: seed.trip && seed.trip.multiplicity,
-        purpose: seed.trip && seed.trip.purpose,
-        entry: seed.trip && seed.trip.entry,
-        exit: seed.trip && seed.trip.exit,
-        stay: seed.trip && seed.trip.stay,
-        note: seed.note || "",
+        code: rec.code,
+        status: rec.status,
+        issuedAt: (rec.issuedAt || "").slice(0, 16),
+        surname: rec.holder && rec.holder.surname,
+        given: rec.holder && rec.holder.given,
+        passport: rec.holder && rec.holder.passport,
+        dob: rec.holder && rec.holder.dob,
+        gender: rec.holder && rec.holder.gender,
+        nationality: rec.holder && rec.holder.nationality,
+        multiplicity: rec.trip && rec.trip.multiplicity,
+        purpose: rec.trip && rec.trip.purpose,
+        entry: rec.trip && rec.trip.entry,
+        exit: rec.trip && rec.trip.exit,
+        stay: rec.trip && rec.trip.stay,
+        note: rec.note || "",
       };
       $$("input, select, textarea", builder).forEach(function (el) {
         if (flat[el.name] != null) el.value = String(flat[el.name]);
       });
+      currentCode = flat.code || "";
+      refresh();
     }
 
-    refresh();
+    /* ---- database panel wiring ---- */
+    var baseInput = $("#vc-base", app);
+    var passInput = $("#vc-pass", app);
+    var msg = $("[data-c-msg]", app);
+    var rowsBox = $("[data-c-rows]", app);
+    var token = sessionStorage.getItem("vc_token") || "";
+    baseInput.value = localStorage.getItem("vc_base") || apiBase();
+
+    function say(text, bad) {
+      msg.textContent = text || "";
+      msg.style.color = bad ? "#b3261e" : "var(--muted)";
+    }
+    function base() {
+      return clean(baseInput.value).replace(/\/+$/, "") || apiBase();
+    }
+    function rememberBase() {
+      localStorage.setItem("vc_base", clean(baseInput.value));
+    }
+    function call(path, opts) {
+      opts = opts || {};
+      var headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = "Bearer " + token;
+      return fetch(base() + path, Object.assign({ headers: headers, cache: "no-store" }, opts))
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok || j.ok === false) throw new Error(j.error || ("HTTP " + r.status));
+            return j;
+          });
+        });
+    }
+
+    $("[data-c-login]", app).addEventListener("click", function () {
+      rememberBase();
+      if (!passInput.value) return say("Enter the admin password first.", true);
+      call("/api/admin?action=login", {
+        method: "POST",
+        body: JSON.stringify({ password: passInput.value }),
+      }).then(function (j) {
+        token = j.token;
+        sessionStorage.setItem("vc_token", token);
+        passInput.value = "";
+        say("Logged in. The session lasts " + j.hours + " hours.");
+      }).catch(function (e) { say(e.message, true); });
+    });
+
+    $("[data-c-list]", app).addEventListener("click", function () {
+      rememberBase();
+      call("/api/admin?action=list").then(function (j) {
+        var items = j.records || [];
+        if (!items.length) {
+          rowsBox.innerHTML = "";
+          return say("Database is empty. Publish a voucher to add the first record.");
+        }
+        rowsBox.innerHTML = '<div class="admin-recs">' + items.map(function (r) {
+          return '<div class="admin-rec"><span class="mono">' + esc(r.code) + "</span>" +
+            '<span class="rec-status rec-status--' + esc(r.status) + '">' + esc(r.status) + "</span>" +
+            '<span class="rec-name">' + esc((r.holder && r.holder.surname) || "") + " " + esc((r.holder && r.holder.given) || "") + "</span>" +
+            '<button class="btn btn--ghost" type="button" data-c-edit="' + esc(r.code) + '">Edit</button></div>';
+        }).join("") + "</div>";
+        say("Loaded " + items.length + " record(s). Click Edit to load one into the form.");
+        $$("[data-c-edit]", rowsBox).forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var found = null;
+            items.forEach(function (r) {
+              if (normCode(r.code) === normCode(btn.getAttribute("data-c-edit"))) found = r;
+            });
+            fillForm(found);
+            say("Loaded " + (found ? found.code : "") + " into the form. Publish to save changes.");
+          });
+        });
+      }).catch(function (e) { say(e.message, true); });
+    });
+
+    $("[data-c-save]", app).addEventListener("click", function () {
+      rememberBase();
+      var rec = refresh();
+      if (!rec.code) return say("Enter a voucher number first.", true);
+      call("/api/admin?action=save", {
+        method: "POST",
+        body: JSON.stringify({ record: rec, oldCode: currentCode }),
+      }).then(function (j) {
+        currentCode = j.code;
+        say("Published " + j.code + ". It can now be verified online.");
+      }).catch(function (e) { say(e.message, true); });
+    });
+
+    $("[data-c-delete]", app).addEventListener("click", function () {
+      rememberBase();
+      var rec = refresh();
+      if (!rec.code) return say("Enter a voucher number first.", true);
+      if (!window.confirm("Delete " + rec.code + " from the register?")) return;
+      call("/api/admin?action=delete", {
+        method: "POST",
+        body: JSON.stringify({ code: rec.code }),
+      }).then(function (j) {
+        if (normCode(currentCode) === normCode(j.code)) currentCode = "";
+        say("Deleted " + j.code + ".");
+      }).catch(function (e) { say(e.message, true); });
+    });
+
+    if (records[0]) fillForm(records[0]);
+    else refresh();
   }
 
   /* ------------------------------------------------------------------ boot */

@@ -1,6 +1,0 @@
-# Cache rules for Netlify / Cloudflare Pages.
-# Put this file in the root of the published folder.
-# It stops browsers from holding an old copy of the page or the voucher list.
-
-/*
-  Cache-Control: no-cache, must-revalidate

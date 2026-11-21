@@ -1,106 +1,157 @@
-# How to put the site online
+# Go live: Cloudflare Pages + D1 database
 
-The folder **`publish/`** contains exactly the files that must go on the server:
+Your repository: **https://github.com/dortoirelaman26-collab/vouche**
+Your public address is whatever Cloudflare shows in the project after step 7
+( `https://<project-name>.pages.dev` ). **`vouche.pages.dev` is already taken by
+another site — do not use it.** The site detects its own address automatically,
+so you do not need to edit `siteUrl`.
+
+Free forever for this size of site: Pages hosting + D1 database + HTTPS.
+No card needed. The domain can be added later (the domain name itself is not free).
+
+---
+
+## 1. Install what you need (once)
+
+1. Create a free Cloudflare account: https://dash.cloudflare.com/sign-up
+2. Install Node.js (LTS): https://nodejs.org/
+3. Open **PowerShell** and check:
+
+```powershell
+node --version
+```
+
+## 2. Log in to Cloudflare from your computer
+
+```powershell
+cd "C:\Users\user\Downloads\Nouveau dossier\cloudflare-site"
+npx wrangler login
+```
+
+A browser window opens — click **Allow**.
+
+## 3. Create the database
+
+```powershell
+npx wrangler d1 create vouche-db
+```
+
+Wrangler prints a block like this:
 
 ```
-publish/
-├── index.html          ← page d'accueil / форма ввода номера
-├── verify.html         ← страница проверки
-├── app.js  qrcode.js
-├── assets/style.css
-├── data/vouchers.js    ← ваши записи
-├── robots.txt
-├── _headers            ← кэш для Netlify / Cloudflare
-└── .htaccess           ← кэш для Apache
+[[d1_databases]]
+binding = "DB"
+database_name = "vouche-db"
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-`admin.html` **намеренно не входит** — это ваш внутренний конструктор ваучеров,
-его нельзя выкладывать в интернет. Открывайте его из папки `Nouveau dossier`
-на своём компьютере.
+**Copy the `database_id`** and paste it into `wrangler.toml` in this folder,
+replacing `PASTE_YOUR_DATABASE_ID_HERE`.
+
+## 4. Create the table
+
+```powershell
+npx wrangler d1 execute vouche-db --remote --file=schema.sql
+```
+
+Optional — add two test records so you can try the live page:
+
+```powershell
+npx wrangler d1 execute vouche-db --remote --file=demo.sql
+```
+
+(Delete them later from `admin.html`, or run
+`npx wrangler d1 execute vouche-db --remote --command="DELETE FROM vouchers WHERE code LIKE 'DEMO-%'"`)
+
+## 5. Check the settings in the file
+
+`data/vouchers.js`:
+
+```js
+siteUrl: "",     // leave empty = use the site's own address automatically
+useApi: true,
+```
+
+No URL to configure: QR links use the address the page is served from.
+Replace only the company placeholders in that file:
+`brand`, `operatorName`, `operatorLicence`, `operatorTaxId`, `operatorContact`.
+
+## 6. Upload the folder to GitHub
+
+```powershell
+cd "C:\Users\user\Downloads\Nouveau dossier\cloudflare-site"
+git init
+git add .
+git commit -m "Voucher portal with D1 database"
+git branch -M main
+git remote add origin https://github.com/dortoirelaman26-collab/vouche.git
+git push -u origin main
+```
+
+If GitHub asks you to sign in, use **Sign in with browser** — a password alone
+does not work. If the push is rejected because the repository already has files,
+run `git pull --rebase origin main` first, then `git push`.
+
+A **private** repository works fine with Cloudflare Pages and is recommended.
+
+## 7. Connect the repository to Cloudflare Pages
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
+2. Choose GitHub → select `dortoirelaman26-collab/vouche`.
+3. Build settings:
+   - Framework preset: **None** (or "Other")
+   - Build command: **leave empty**
+   - Build output directory: **`.`** (a single dot = repository root)
+   - Root directory: leave as `/`
+4. **Save and Deploy**. Wait 1–2 minutes.
+
+Your site is now at **https://vouche.pages.dev**.
+
+## 8. Set the admin password (important)
+
+1. In the new project: **Settings → Variables and Secrets → Add**.
+2. Name: `ADMIN_PASSWORD`
+3. Value: a long password (16+ characters).
+4. Click **Encrypt**, then **Save**.
+5. **Deployments → Redeploy** so the Functions pick it up.
+
+Anyone can open `/admin.html`, but without this password they cannot read,
+add, change or delete any record.
+
+## 9. Use it
+
+**Public check:** https://vouche.pages.dev/verify.html?code=DEMO-4X7K-92MQ
+(or any code you published)
+
+**Admin:** https://vouche.pages.dev/admin.html
+1. Site URL is filled in automatically.
+2. Enter the password → **Log in**.
+3. **Load records** to see the database.
+4. Fill the voucher form → **Publish this voucher**.
+5. **Edit** loads a record back into the form; **Delete this voucher** removes it.
+
+Changes are live immediately — the check API sends `Cache-Control: no-store`.
 
 ---
 
-## 1. Домен
+## Later: your own domain
 
-Купить домен может только вы (нужна ваша карта и аккаунт). Регистраторы:
+1. Buy a domain (Cloudflare Registrar, Porkbun, Namecheap… ~$10/year).
+2. Project → **Settings → Custom domains → Set up a domain** → enter e.g.
+   `check.yourcompany.com`.
+3. Add the DNS record Cloudflare shows at your registrar.
+4. Change `siteUrl` in `data/vouchers.js` to `https://check.yourcompany.com`,
+   commit and push. Regenerate any QR codes you already printed.
+5. Tick **Enforce HTTPS** (free certificate).
 
-| Регистратор | Цена примерно | Примечание |
-| --- | --- | --- |
-| **Cloudflare Registrar** | ~10 €/год | самый дешёвый, DNS уже включён |
-| **Porkbun** | ~10 €/год | простой интерфейс |
-| **Namecheap** | ~10–13 €/год | популярный |
-| **OVH / Gandi / Ionos** | ~12–18 €/год | если вы во Франции |
+## Notes / limits
 
-Примеры имён (замените на своё):
-
-- `check.votre-company.com`
-- `verify.votre-company.com`
-- `votre-company-check.com`
-- `votre-company-viza.ru`
-
-Поддомен (`check.…`) бесплатен, если основной домен уже ваш.
-
-> Не покупайте домен, похожий на чужой (`globaelvoyazh…` и т.п.) — это
-> закончится блокировкой у хостинга и претензиями от владельца бренда.
-
----
-
-## 2. Загрузка — вариант A: Netlify Drop (самый быстрый)
-
-1. Откройте <https://app.netlify.com/drop>.
-2. Перетащите **папку `publish`** целиком в окно браузера.
-3. Через ~20 секунд получите адрес вида `random-name-123.netlify.app`.
-   Проверьте: `https://random-name-123.netlify.app/verify.html?code=DEMO-4X7K-92MQ`.
-4. Зарегистрируйтесь (бесплатно), чтобы сайт не удалился.
-5. Свой домен: **Domain settings → Add a domain** → введите домен →
-   Netlify покажет DNS-записи.
-
-## 3. Загрузка — вариант B: обычный хостинг с cPanel
-
-1. Купите хостинг (Hostinger, OVH, Ionos…).
-2. Панель → **File Manager** → папка `public_html`.
-3. Загрузите **содержимое** папки `publish` (не саму папку), архивом или по файлам.
-4. Сайт откроется по вашему домену сразу после привязки.
-
-## 4. Загрузка — вариант C: Cloudflare Pages
-
-1. <https://dash.cloudflare.com> → **Workers & Pages → Create → Pages → Upload assets**.
-2. Перетащите папку `publish`, нажмите **Deploy**.
-3. Адрес `project.pages.dev`, потом **Custom domains → Set up a domain**.
-
----
-
-## 5. Привязать домен (DNS)
-
-У регистратора домена создайте записи, которые показывает хостинг:
-
-| Тип | Имя | Значение |
-| --- | --- | --- |
-| `CNAME` | `check` (или `@` для основного) | адрес, который дал хостинг, например `random-name-123.netlify.app` |
-| `A` | `@` | IP хостинга (только если хостинг дал IP) |
-
-DNS обновляется от 5 минут до 24 часов. HTTPS-сертификат Netlify/Cloudflare
-выпускает сам, бесплатно — ничего делать не нужно.
-
----
-
-## 6. После публикации (обязательно)
-
-1. В `data/vouchers.js`, строка 27, поставьте реальный адрес:
-   ```js
-   siteUrl: "https://check.votre-company.com",
-   ```
-   Без `/` в конце. Если сайт лежит в подпапке — включите её:
-   `https://votre-company.com/check`.
-2. Замените демо-записи на свои (или попросите меня).
-3. Поднимите версию скриптов в `index.html` и `verify.html`:
-   `app.js?v=5`, `data/vouchers.js?v=5` — иначе посетители увидят старую версию.
-4. Проверьте на телефоне: `https://ваш-домен/verify.html?code=ВАШ-НОМЕР`.
-
-## 7. Что я не могу сделать за вас
-
-- купить домен и оплатить хостинг;
-- войти в ваш аккаунт Netlify/Cloudflare/OVH;
-- подтвердить, что вы имеете право публиковать документы от имени компании.
-
-Всё остальное — файлы, конфигурация, проверка — готово.
+- Voucher data lives in D1 — **not** in a public JavaScript file anymore.
+- Free D1 allowance: 500 MB per database, 10 databases. Thousands of vouchers.
+- `maskPassport: true` is still on. The database stores what you type; only the
+  masked form is shown publicly.
+- Public pages are Russian only; `admin.html` stays in English (private tool).
+- To update the site later: edit files in `cloudflare-site`, `git add .`,
+  `git commit -m "update"`, `git push`. Cloudflare rebuilds automatically.
+- If you change script files, bump `?v=5` to `?v=6` in the three HTML files so
+  visitors do not keep a cached copy.
